@@ -182,11 +182,28 @@ $('#chk-hyphenate').addEventListener('change', e => { style.hyphenate = e.target
 $('#btn-toc').addEventListener('click', () => openSide('toc'))
 $('#btn-search').addEventListener('click', () => { openSide('search'); setTimeout(() => $('#search-input').focus(), 100) })
 $('#btn-appearance').addEventListener('click', () => { $('#appearance-panel').hidden = !$('#appearance-panel').hidden })
+
+const fsBtn = $('#btn-fullscreen')
+const fsEnter = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen
+const fsExit = document.exitFullscreen || document.webkitExitFullscreen
+function isFullscreen() { return document.fullscreenElement || document.webkitFullscreenElement }
+function toggleFullscreen() {
+  if (!fsEnter) return
+  if (isFullscreen()) fsExit?.call(document)
+  else Promise.resolve(fsEnter.call(document.documentElement)).catch(() => {})
+}
+function updateFsBtn() { if (fsBtn) { const on = !!isFullscreen(); fsBtn.textContent = on ? '⤡' : '⛶'; fsBtn.title = on ? 'Vollbild beenden' : 'Vollbild' } }
+if (fsBtn && fsEnter) {
+  fsBtn.hidden = false
+  fsBtn.addEventListener('click', toggleFullscreen)
+  document.addEventListener('fullscreenchange', updateFsBtn)
+  document.addEventListener('webkitfullscreenchange', updateFsBtn)
+}
 $('#btn-bookmark').addEventListener('click', async () => { const cfi = view.lastLocation?.cfi; if (cfi) { await createAnnotation({ cfi, text: '', color: '#90caf9', motivation: 'bookmarking' }); flash('Lesezeichen gesetzt') } })
 $('#btn-prev').addEventListener('click', goPrev)
 $('#btn-next').addEventListener('click', goNext)
 $('#progress-slider').addEventListener('input', e => view.goToFraction(parseFloat(e.target.value)))
-document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup() } })
+document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'f' || e.key === 'F') toggleFullscreen(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup() } })
 
 let flashTimer
 function flash(msg) { let el = $('#flash'); if (!el) { el = document.createElement('div'); el.id = 'flash'; el.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--r-bar);border:1px solid var(--r-border);padding:.4rem .9rem;border-radius:6px;z-index:20;font-size:.8rem'; document.body.append(el) } el.textContent = msg; el.style.opacity = '1'; clearTimeout(flashTimer); flashTimer = setTimeout(() => el.style.opacity = '0', 1500) }
