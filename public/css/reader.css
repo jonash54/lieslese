@@ -39,10 +39,8 @@ foliate-view { width: 100%; height: 100%; display: block; }
 .progress-label { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--r-muted);
   min-width: 3.2em; text-align: right; }
 
-/* tap zones for page turn — only in paginated mode, so scroll mode scrolls freely */
-.nav-zone { position: absolute; top: 0; bottom: 0; width: 18%; z-index: 3; cursor: pointer; }
-.nav-left { left: 0; } .nav-right { right: 0; }
-.reader-body[data-flow="scrolled"] .nav-zone { display: none; }
+/* navigation is by tap POSITION on the whole surface (see reader.js),
+   so nothing overlays the content and scrolling works everywhere. */
 
 /* side panel */
 .dimming { position: fixed; inset: 0; background: rgba(0,0,0,0.4); opacity: 0; pointer-events: none;
@@ -102,6 +100,5 @@ foliate-view { width: 100%; height: 100%; display: block; }
 .dot:hover { border-color: var(--r-fg); }
 
 @media (max-width: 600px) {
-  .nav-zone { width: 25%; }
   .bar-title { font-size: 0.75rem; }
 }

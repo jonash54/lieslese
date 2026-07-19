@@ -37,6 +37,13 @@ let view, annoPage = db.emptyAnnoPage()
 // ---- navigation (three flow modes) ----
 function goNext() { if (style.flow === 'chapter') view.renderer?.nextSection?.(); else view.goRight() }
 function goPrev() { if (style.flow === 'chapter') view.renderer?.prevSection?.(); else view.goLeft() }
+function toggleImmersive() { body.classList.toggle('immersive') }
+// tap navigation by POSITION over the whole surface; scroll mode: tap only toggles bars
+function handleTap(x, w) {
+  if (style.flow === 'scrolled') { toggleImmersive(); return }
+  const f = x / (w || window.innerWidth)
+  if (f < 0.4) goPrev(); else if (f > 0.6) goNext(); else toggleImmersive()
+}
 let _lastScrollAt = 0, _sectionLock = false
 function markScroll() { _lastScrollAt = performance.now() }
 function onContentWheel(ev) {
@@ -97,9 +104,9 @@ async function deleteAnnotation(rec) {
 }
 
 // ---- selection popup ----
-const popup = $('#anno-popup'); let pending = null, popupRec = null
+const popup = $('#anno-popup'); let pending = null, popupRec = null, popupOpenedAt = 0
 function hidePopup() { popup.hidden = true; pending = null; popupRec = null }
-function positionPopup(x, y) { popup.hidden = false; const w = popup.offsetWidth, h = popup.offsetHeight; popup.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + 'px'; popup.style.top = Math.max(52, y - h - 12) + 'px' }
+function positionPopup(x, y) { popup.hidden = false; popupOpenedAt = performance.now(); const w = popup.offsetWidth, h = popup.offsetHeight; popup.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + 'px'; popup.style.top = Math.max(52, y - h - 12) + 'px' }
 function onContentPointerup(doc, index, ev) {
   const sel = doc.getSelection(); if (!sel || sel.isCollapsed || !sel.rangeCount) return
   const range = sel.getRangeAt(0), text = sel.toString().trim(); if (!text) return
@@ -178,8 +185,6 @@ $('#btn-appearance').addEventListener('click', () => { $('#appearance-panel').hi
 $('#btn-bookmark').addEventListener('click', async () => { const cfi = view.lastLocation?.cfi; if (cfi) { await createAnnotation({ cfi, text: '', color: '#90caf9', motivation: 'bookmarking' }); flash('Lesezeichen gesetzt') } })
 $('#btn-prev').addEventListener('click', goPrev)
 $('#btn-next').addEventListener('click', goNext)
-$('#nav-left').addEventListener('click', goPrev)
-$('#nav-right').addEventListener('click', goNext)
 $('#progress-slider').addEventListener('input', e => view.goToFraction(parseFloat(e.target.value)))
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup() } })
 
@@ -213,7 +218,17 @@ async function boot() {
     const { doc, index } = e.detail
     doc.addEventListener('pointerup', ev => onContentPointerup(doc, index, ev))
     doc.addEventListener('wheel', onContentWheel, { passive: true })
-    doc.addEventListener('click', () => { if (popup.hidden) return; setTimeout(() => { const s = doc.getSelection(); if (!s || s.isCollapsed) hidePopup() }, 10) })
+    doc.addEventListener('click', ev => {
+      const onLink = !!ev.target?.closest?.('a[href]')
+      const x = ev.clientX, w = doc.documentElement.clientWidth || window.innerWidth
+      setTimeout(() => {
+        const s = doc.getSelection && doc.getSelection()
+        if (s && !s.isCollapsed) return
+        if (!popup.hidden) { if (performance.now() - popupOpenedAt > 80) hidePopup(); return }
+        if (onLink) return
+        handleTap(x, w)
+      }, 0)
+    })
   })
   view.addEventListener('relocate', e => { const d = e.detail; $('#progress-slider').value = d.fraction || 0; $('#progress-label').textContent = Math.round((d.fraction || 0) * 100) + ' %'; scheduleSave(d) })
   wireAnnotationEvents()
@@ -226,7 +241,7 @@ async function boot() {
   await view.init({ lastLocation: goto || last || null, showTextStart: !(goto || last) })
   renderTOC(view.book?.toc)
 
-  $('#reader-view').addEventListener('click', ev => { if (ev.target.closest('.nav-zone')) return; body.classList.toggle('immersive') })
+  $('#reader-view').addEventListener('click', ev => handleTap(ev.clientX, window.innerWidth))
 }
 
 if (!bookId) { location.href = '/' } else boot().catch(e => { console.error(e); $('#reader-title').textContent = 'Fehler beim Laden' })
