@@ -231,7 +231,6 @@ $('#import-data').addEventListener('change', async e => {
 
 // ---------- modals & misc ----------
 $('#about-link').addEventListener('click', e => { e.preventDefault(); show('#about-modal') })
-$('#gh-link').addEventListener('click', e => { /* set your repo URL */ })
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) closeModals() }))
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals() })
 function show(sel) { $(sel).hidden = false }

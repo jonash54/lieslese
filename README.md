@@ -2,7 +2,10 @@
 
 A private EPUB reader that runs **entirely in your browser**. Open your own
 books — they never leave your device. No account, no upload, no server-side
-storage, no tracking. [Live instance → lieslese.de](https://lieslese.de)
+storage, no tracking.
+
+[Live instance → lieslese.de](https://lieslese.de) ·
+[Source → github.com/jonash54/lieslese](https://github.com/jonash54/lieslese) · MIT
 
 ## Why
 
