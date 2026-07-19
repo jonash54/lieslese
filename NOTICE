@@ -1,0 +1,8 @@
+lieslese
+Copyright (c) 2026 Jonas Hellinghausen — MIT License (see LICENSE).
+
+This product bundles the following third-party software:
+
+- foliate-js — https://github.com/johnfactotum/foliate-js
+  Copyright (c) 2022 John Factotum. MIT License.
+  See public/vendor/foliate-js/LICENSE.
