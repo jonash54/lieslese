@@ -42,10 +42,11 @@ function toggleImmersive(on) { on === undefined ? body.classList.toggle('immersi
 // fullscreen mode). Scroll mode: any tap only toggles the bars.
 function handleTap(x, y, w, h) {
   w = w || window.innerWidth; h = h || window.innerHeight
-  if (y / h < 0.15) { toggleImmersive(); return }   // upper area → show/hide bars
-  if (style.flow === 'scrolled') { toggleImmersive(); return }
+  if (y / h < 0.15) { toggleImmersive(); return }   // ONLY the upper strip toggles the bars
+  if (style.flow === 'scrolled') return             // scroll: no page turn; centre does nothing
   const f = x / w
-  if (f < 0.4) goPrev(); else if (f > 0.6) goNext(); else toggleImmersive()
+  if (f < 0.4) goPrev(); else if (f > 0.6) goNext()
+  // centre: nothing
 }
 let _lastScrollAt = 0, _sectionLock = false
 function markScroll() { _lastScrollAt = performance.now() }
