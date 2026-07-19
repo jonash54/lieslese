@@ -37,11 +37,14 @@ let view, annoPage = db.emptyAnnoPage()
 // ---- navigation (three flow modes) ----
 function goNext() { if (style.flow === 'chapter') view.renderer?.nextSection?.(); else view.goRight() }
 function goPrev() { if (style.flow === 'chapter') view.renderer?.prevSection?.(); else view.goLeft() }
-function toggleImmersive() { body.classList.toggle('immersive') }
-// tap navigation by POSITION over the whole surface; scroll mode: tap only toggles bars
-function handleTap(x, w) {
+function toggleImmersive(on) { on === undefined ? body.classList.toggle('immersive') : body.classList.toggle('immersive', on) }
+// tap by POSITION. Upper strip always toggles the chrome (so bars come back in
+// fullscreen mode). Scroll mode: any tap only toggles the bars.
+function handleTap(x, y, w, h) {
+  w = w || window.innerWidth; h = h || window.innerHeight
+  if (y / h < 0.15) { toggleImmersive(); return }   // upper area → show/hide bars
   if (style.flow === 'scrolled') { toggleImmersive(); return }
-  const f = x / (w || window.innerWidth)
+  const f = x / w
   if (f < 0.4) goPrev(); else if (f > 0.6) goNext(); else toggleImmersive()
 }
 let _lastScrollAt = 0, _sectionLock = false
@@ -189,24 +192,27 @@ $('#btn-appearance').addEventListener('click', () => { $('#appearance-panel').hi
 const fsBtn = $('#btn-fullscreen')
 const fsEnter = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen
 const fsExit = document.exitFullscreen || document.webkitExitFullscreen
-function isFullscreen() { return document.fullscreenElement || document.webkitFullscreenElement }
+function isBrowserFs() { return document.fullscreenElement || document.webkitFullscreenElement }
+// "Vollbild" = hide all chrome; tap the upper area to bring the bars back.
+// Also request real browser fullscreen where supported (bonus).
 function toggleFullscreen() {
-  if (!fsEnter) return
-  if (isFullscreen()) fsExit?.call(document)
-  else Promise.resolve(fsEnter.call(document.documentElement)).catch(() => {})
+  const entering = !body.classList.contains('immersive')
+  toggleImmersive(entering)
+  try {
+    if (entering && fsEnter && !isBrowserFs()) Promise.resolve(fsEnter.call(document.documentElement)).catch(() => {})
+    else if (!entering && fsExit && isBrowserFs()) fsExit.call(document)
+  } catch (e) {}
 }
-function updateFsBtn() { if (fsBtn) { const on = !!isFullscreen(); fsBtn.textContent = on ? '⤡' : '⛶'; fsBtn.title = on ? 'Vollbild beenden' : 'Vollbild' } }
-if (fsBtn && fsEnter) {
+if (fsBtn) {
   fsBtn.hidden = false
   fsBtn.addEventListener('click', toggleFullscreen)
-  document.addEventListener('fullscreenchange', updateFsBtn)
-  document.addEventListener('webkitfullscreenchange', updateFsBtn)
 }
+document.addEventListener('fullscreenchange', () => { if (!isBrowserFs()) toggleImmersive(false) })
 $('#btn-bookmark').addEventListener('click', async () => { const cfi = view.lastLocation?.cfi; if (cfi) { await createAnnotation({ cfi, text: '', color: '#90caf9', motivation: 'bookmarking' }); flash('Lesezeichen gesetzt') } })
 $('#btn-prev').addEventListener('click', goPrev)
 $('#btn-next').addEventListener('click', goNext)
 $('#progress-slider').addEventListener('input', e => view.goToFraction(parseFloat(e.target.value)))
-document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'f' || e.key === 'F') toggleFullscreen(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup() } })
+document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'f' || e.key === 'F') toggleFullscreen(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup(); toggleImmersive(false) } })
 
 let flashTimer
 function flash(msg) { let el = $('#flash'); if (!el) { el = document.createElement('div'); el.id = 'flash'; el.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--r-bar);border:1px solid var(--r-border);padding:.4rem .9rem;border-radius:6px;z-index:20;font-size:.8rem'; document.body.append(el) } el.textContent = msg; el.style.opacity = '1'; clearTimeout(flashTimer); flashTimer = setTimeout(() => el.style.opacity = '0', 1500) }
@@ -240,13 +246,15 @@ async function boot() {
     doc.addEventListener('wheel', onContentWheel, { passive: true })
     doc.addEventListener('click', ev => {
       const onLink = !!ev.target?.closest?.('a[href]')
-      const x = ev.clientX, w = doc.documentElement.clientWidth || window.innerWidth
+      const x = ev.clientX, y = ev.clientY
+      const w = doc.documentElement.clientWidth || window.innerWidth
+      const h = doc.documentElement.clientHeight || window.innerHeight
       setTimeout(() => {
         const s = doc.getSelection && doc.getSelection()
         if (s && !s.isCollapsed) return
         if (!popup.hidden) { if (performance.now() - popupOpenedAt > 80) hidePopup(); return }
         if (onLink) return
-        handleTap(x, w)
+        handleTap(x, y, w, h)
       }, 0)
     })
   })
@@ -261,7 +269,7 @@ async function boot() {
   await view.init({ lastLocation: goto || last || null, showTextStart: !(goto || last) })
   renderTOC(view.book?.toc)
 
-  $('#reader-view').addEventListener('click', ev => handleTap(ev.clientX, window.innerWidth))
+  $('#reader-view').addEventListener('click', ev => handleTap(ev.clientX, ev.clientY, window.innerWidth, window.innerHeight))
 }
 
 if (!bookId) { location.href = '/' } else boot().catch(e => { console.error(e); $('#reader-title').textContent = 'Fehler beim Laden' })
