@@ -10,7 +10,7 @@ const bookId = new URLSearchParams(location.search).get('id')
 // apply saved custom theme css
 try { const t = JSON.parse(localStorage.getItem('lieslese-theme') || '{}'); if (t.css) $('#custom-theme').textContent = t.css } catch (e) {}
 
-const DEFAULT_STYLE = { theme: 'light', flow: 'paginated', fontSize: 100, spacing: 1.5, margin: 6, fontFamily: '', justify: true, hyphenate: true }
+const DEFAULT_STYLE = { theme: 'light', flow: 'paginated', fontSize: 100, spacing: 1.5, margin: 6, fontFamily: '', justify: true, hyphenate: true, bottomBar: true }
 const style = { ...DEFAULT_STYLE, ...loadStyle() }
 function loadStyle() { try { return JSON.parse(localStorage.getItem('lieslese-style') || '{}') } catch { return {} } }
 function saveStyle() { localStorage.setItem('lieslese-style', JSON.stringify(style)) }
@@ -60,6 +60,7 @@ function onContentWheel(ev) {
 
 function applyStyle() {
   body.dataset.rtheme = style.theme; body.dataset.flow = style.flow
+  body.classList.toggle('no-bottombar', !style.bottomBar)
   const c = THEME_COLORS[style.theme] || THEME_COLORS.light
   $('#reader-view').style.background = c.bg
   if (!view || !view.renderer) return
@@ -168,6 +169,7 @@ function syncAppearanceUI() {
   document.querySelectorAll('#seg-flow button').forEach(b => b.classList.toggle('active', b.dataset.flow === style.flow))
   $('#font-val').textContent = style.fontSize + '%'; $('#spacing-range').value = style.spacing; $('#margin-range').value = style.margin
   $('#font-family').value = style.fontFamily; $('#chk-justify').checked = style.justify; $('#chk-hyphenate').checked = style.hyphenate
+  $('#chk-bottombar').checked = style.bottomBar
 }
 document.querySelectorAll('#seg-theme button').forEach(b => b.addEventListener('click', () => { style.theme = b.dataset.theme; saveStyle(); applyStyle() }))
 document.querySelectorAll('#seg-flow button').forEach(b => b.addEventListener('click', () => { style.flow = b.dataset.flow; saveStyle(); applyStyle() }))
@@ -177,6 +179,7 @@ $('#margin-range').addEventListener('input', e => { style.margin = parseInt(e.ta
 $('#font-family').addEventListener('change', e => { style.fontFamily = e.target.value; saveStyle(); applyStyle() })
 $('#chk-justify').addEventListener('change', e => { style.justify = e.target.checked; saveStyle(); applyStyle() })
 $('#chk-hyphenate').addEventListener('change', e => { style.hyphenate = e.target.checked; saveStyle(); applyStyle() })
+$('#chk-bottombar').addEventListener('change', e => { style.bottomBar = e.target.checked; saveStyle(); applyStyle() })
 
 // ---- controls ----
 $('#btn-toc').addEventListener('click', () => openSide('toc'))

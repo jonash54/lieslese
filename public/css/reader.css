@@ -23,6 +23,7 @@ foliate-view { width: 100%; height: 100%; display: block; }
   background: var(--r-bar); border-bottom: 1px solid var(--r-border); z-index: 5;
   transition: transform 0.25s, opacity 0.25s; }
 #reader-bottom { border-bottom: none; border-top: 1px solid var(--r-border); }
+.reader-body.no-bottombar #reader-bottom { display: none; }
 .reader-body.immersive .reader-bar { transform: translateY(0); }
 .reader-body.immersive #reader-top { transform: translateY(-100%); }
 .reader-body.immersive #reader-bottom { transform: translateY(100%); }
