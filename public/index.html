@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>lieslese — dein Browser-Lesezimmer</title>
+  <meta name="description" content="Ein privater EPUB-Reader, der komplett in deinem Browser läuft. Kein Konto, kein Upload, nichts wird gespeichert.">
+  <script>
+    (function () {
+      var m = document.cookie.match(/(?:^|; )theme=(\w+)/)
+      var dark = m ? m[1] === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+      if (dark) document.documentElement.classList.add('dark')
+      try { var t = JSON.parse(localStorage.getItem('lieslese-theme') || '{}'); if (t.preset) document.documentElement.dataset.preset = t.preset } catch (e) {}
+    })()
+  </script>
+  <link rel="stylesheet" href="/css/weltsein.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#4a7a3f">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="lieslese">
+  <style id="custom-theme"></style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a href="/" class="site-title">lieslese</a>
+      <div class="header-controls">
+        <button class="btn btn-sm" id="btn-settings" title="Einstellungen">⚙</button>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Hell/Dunkel">◐</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Dein Lesezimmer im Browser</h1>
+      <p class="muted">Öffne ein EPUB — es bleibt <strong>komplett auf deinem Gerät</strong>.
+        Kein Konto, kein Upload, nichts wird an einen Server gesendet.</p>
+      <div class="open-actions">
+        <label class="btn btn-primary" for="file-input">＋ EPUB öffnen</label>
+        <input id="file-input" type="file" accept=".epub,application/epub+zip" multiple hidden>
+      </div>
+    </section>
+
+    <div class="lib-toolbar" id="toolbar" hidden>
+      <div class="filter-bar">
+        <input type="search" id="search" placeholder="Suchen (Titel, Autor)…">
+        <select id="sort">
+          <option value="recent">Zuletzt gelesen</option>
+          <option value="added">Hinzugefügt</option>
+          <option value="title">Titel</option>
+          <option value="author">Autor</option>
+        </select>
+      </div>
+      <span class="muted" id="count"></span>
+    </div>
+
+    <div id="drop-hint" class="drop-hint">EPUB hierher ziehen</div>
+    <div class="book-grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>
+      <p class="muted">Noch keine Bücher. Öffne oben ein EPUB oder zieh es einfach hierher.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <small>lieslese — läuft ganz in deinem Browser · <a href="#" id="about-link">Was ist das?</a> ·
+      <a href="https://github.com" id="gh-link" rel="noopener">Open Source</a></small>
+  </footer>
+
+  <!-- book detail modal -->
+  <div class="modal" id="book-modal" hidden>
+    <div class="modal-card" id="book-modal-card"></div>
+  </div>
+
+  <!-- settings modal -->
+  <div class="modal" id="settings-modal" hidden>
+    <div class="modal-card">
+      <h2>Einstellungen</h2>
+      <h3>Thema</h3>
+      <div class="theme-picker" id="theme-picker">
+        <label class="theme-option"><input type="radio" name="preset" value="weltsein"><span class="swatch swatch-weltsein"></span> weltsein (grün)</label>
+        <label class="theme-option"><input type="radio" name="preset" value="weltsein-blau"><span class="swatch swatch-weltsein-blau"></span> weltsein-blau</label>
+      </div>
+      <details class="mt">
+        <summary>Eigenes Thema (CSS)</summary>
+        <p class="muted small">CSS mit Variablen-Overrides (<code>--brand</code>, <code>--bg</code> …). Bleibt in deinem Browser.</p>
+        <textarea id="custom-css" rows="5" placeholder=":root { --brand: #8a4a7a; }"></textarea>
+        <div class="form-row"><button class="btn btn-sm btn-primary" id="apply-css">Anwenden</button>
+          <button class="btn btn-sm" id="clear-css">Zurücksetzen</button></div>
+      </details>
+      <h3 class="mt">Daten</h3>
+      <p class="muted small" id="storage-usage"></p>
+      <div class="form-row">
+        <button class="btn btn-sm" id="export-data">Lesedaten exportieren (JSON)</button>
+        <label class="btn btn-sm" for="import-data">Importieren</label>
+        <input id="import-data" type="file" accept="application/json" hidden>
+      </div>
+      <p class="muted small">Bücher, Position und Notizen liegen nur hier im Browser. Leerst du die
+        Browserdaten, sind sie weg — exportiere zur Sicherung.</p>
+      <button class="btn btn-sm modal-close" data-close>Schließen</button>
+    </div>
+  </div>
+
+  <!-- about modal -->
+  <div class="modal" id="about-modal" hidden>
+    <div class="modal-card">
+      <h2>Was ist lieslese?</h2>
+      <p>Ein EPUB-Reader, der <strong>vollständig in deinem Browser</strong> läuft. Du öffnest deine
+        eigenen Bücher; sie werden lokal gespeichert (IndexedDB) und <strong>nie hochgeladen</strong>.
+        Der Server liefert nur die App aus und speichert nichts über dich — kein Konto, keine Cookies
+        zum Tracking, keine Analyse.</p>
+      <p>Leseposition und Notizen werden in offenen Standardformaten gehalten
+        (EPUB-CFI / Readium-Locator, W3C Web Annotation), damit du sie exportieren und woanders
+        weiterverwenden kannst.</p>
+      <p class="muted small">Reader-Engine: foliate-js (MIT). lieslese ist Open Source (MIT).</p>
+      <button class="btn btn-sm modal-close" data-close>Schließen</button>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+  </script>
+  <script type="module" src="/js/library.js"></script>
+</body>
+</html>

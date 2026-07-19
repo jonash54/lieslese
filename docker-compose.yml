@@ -1,0 +1,11 @@
+services:
+  lieslese:
+    build: .
+    container_name: lieslese
+    ports:
+      - "127.0.0.1:4585:80"
+    volumes:
+      # live-serve the static app; remove this line to serve the image's baked copy
+      - ./public:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

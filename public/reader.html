@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>lieslese</title>
+  <script>
+    (function () {
+      var m = document.cookie.match(/(?:^|; )theme=(\w+)/)
+      var dark = m ? m[1] === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+      if (dark) document.documentElement.classList.add('dark')
+      try { var t = JSON.parse(localStorage.getItem('lieslese-theme') || '{}'); if (t.preset) document.documentElement.dataset.preset = t.preset } catch (e) {}
+    })()
+  </script>
+  <link rel="stylesheet" href="/css/weltsein.css">
+  <link rel="stylesheet" href="/css/reader.css">
+  <style id="custom-theme"></style>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#4a7a3f">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="lieslese">
+</head>
+<body class="reader-body">
+  <div id="reader-root">
+    <header id="reader-top" class="reader-bar">
+      <div class="bar-left">
+        <a href="/" class="icon-btn" title="Bibliothek">←</a>
+        <button class="icon-btn" id="btn-toc" title="Inhalt">☰</button>
+      </div>
+      <div class="bar-title" id="reader-title">lieslese</div>
+      <div class="bar-right">
+        <button class="icon-btn" id="btn-search" title="Suchen">🔍</button>
+        <button class="icon-btn" id="btn-bookmark" title="Lesezeichen">🔖</button>
+        <button class="icon-btn" id="btn-appearance" title="Darstellung">Aa</button>
+      </div>
+    </header>
+
+    <div id="reader-view"></div>
+    <div class="nav-zone nav-left" id="nav-left" title="Zurück"></div>
+    <div class="nav-zone nav-right" id="nav-right" title="Weiter"></div>
+
+    <footer id="reader-bottom" class="reader-bar">
+      <button class="icon-btn" id="btn-prev" title="Zurück">‹</button>
+      <input type="range" id="progress-slider" min="0" max="1" step="0.0001" value="0">
+      <span id="progress-label" class="progress-label">0 %</span>
+      <button class="icon-btn" id="btn-next" title="Weiter">›</button>
+    </footer>
+  </div>
+
+  <div id="dimming" class="dimming"></div>
+  <aside id="side-panel" class="side-panel">
+    <div class="side-tabs">
+      <button data-tab="toc" class="side-tab active">Inhalt</button>
+      <button data-tab="annotations" class="side-tab">Notizen</button>
+      <button data-tab="search" class="side-tab">Suche</button>
+    </div>
+    <div class="side-body">
+      <div data-panel="toc" class="side-content"><nav id="toc-view"></nav></div>
+      <div data-panel="annotations" class="side-content" hidden><ul id="anno-view" class="anno-list"></ul></div>
+      <div data-panel="search" class="side-content" hidden>
+        <form id="search-form"><input type="search" id="search-input" placeholder="Im Buch suchen…"></form>
+        <ul id="search-results" class="search-results"></ul>
+      </div>
+    </div>
+  </aside>
+
+  <div id="appearance-panel" class="popover" hidden>
+    <div class="pop-row"><span>Thema</span>
+      <div class="seg" id="seg-theme"><button data-theme="light">Hell</button><button data-theme="sepia">Sepia</button><button data-theme="dark">Dunkel</button></div></div>
+    <div class="pop-row"><span>Layout</span>
+      <div class="seg" id="seg-flow"><button data-flow="paginated">Seiten</button><button data-flow="scrolled">Scrollen</button><button data-flow="chapter">Kapitel</button></div></div>
+    <div class="pop-row"><span>Schriftgröße</span>
+      <div class="stepper"><button data-font="-">A−</button><span id="font-val">100%</span><button data-font="+">A＋</button></div></div>
+    <div class="pop-row"><span>Zeilenabstand</span><input type="range" id="spacing-range" min="1.1" max="2.2" step="0.05" value="1.5"></div>
+    <div class="pop-row"><span>Rand</span><input type="range" id="margin-range" min="0" max="12" step="1" value="6"></div>
+    <div class="pop-row"><span>Schriftart</span>
+      <select id="font-family"><option value="">Original</option><option value="Inter, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="'JetBrains Mono', monospace">JetBrains Mono</option></select></div>
+    <div class="pop-row"><label><input type="checkbox" id="chk-justify" checked> Blocksatz</label></div>
+    <div class="pop-row"><label><input type="checkbox" id="chk-hyphenate" checked> Silbentrennung</label></div>
+  </div>
+
+  <div id="anno-popup" class="anno-popup" hidden>
+    <div class="color-dots">
+      <button class="dot" style="--c:#ffd54a" data-color="#ffd54a"></button>
+      <button class="dot" style="--c:#a5d6a7" data-color="#a5d6a7"></button>
+      <button class="dot" style="--c:#90caf9" data-color="#90caf9"></button>
+      <button class="dot" style="--c:#f48fb1" data-color="#f48fb1"></button>
+      <button class="dot" style="--c:#ce93d8" data-color="#ce93d8"></button>
+    </div>
+    <button class="icon-btn" data-act="note" title="Notiz">✎</button>
+    <button class="icon-btn" data-act="copy" title="Kopieren">⧉</button>
+    <button class="icon-btn" data-act="delete" title="Löschen" hidden>🗑</button>
+  </div>
+
+  <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
+  <script type="module" src="/js/reader.js"></script>
+</body>
+</html>
