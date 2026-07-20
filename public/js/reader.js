@@ -1,7 +1,8 @@
 import '../vendor/foliate-js/view.js'
 import { Overlayer } from '../vendor/foliate-js/overlayer.js'
+import { FootnoteHandler } from '../vendor/foliate-js/footnotes.js'
 import * as db from './db.js'
-import { makeAnnotation, makeLocator, cfiOf, textOf, noteOf } from './lib.js'
+import { makeAnnotation, makeLocator, cfiOf, textOf, noteOf, styleOf, fmtLangMap } from './lib.js'
 
 const $ = s => document.querySelector(s)
 const body = document.body
@@ -20,10 +21,19 @@ const THEME_COLORS = {
   sepia: { bg: '#f4ecd8', fg: '#5b4636', link: '#8a5a2b' },
   dark: { bg: '#16171a', fg: '#c9ccd1', link: '#8fb0c2' },
 }
+// app-bundled fonts, injected into the book iframe so the font picker actually works
+const FONT_FACES = `
+@font-face{font-family:'OpenDyslexic';src:url('/fonts/OpenDyslexic-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'OpenDyslexic';src:url('/fonts/OpenDyslexic-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Inter';src:url('/fonts/Inter-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Inter';src:url('/fonts/Inter-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');font-weight:400;font-display:swap}`
+
 function contentCSS() {
   const c = THEME_COLORS[style.theme] || THEME_COLORS.light
   const ff = style.fontFamily ? `body,p,div,span,li,h1,h2,h3,h4{font-family:${style.fontFamily} !important}` : ''
-  return `@namespace epub "http://www.idpf.org/2007/ops";
+  return `${FONT_FACES}
+    @namespace epub "http://www.idpf.org/2007/ops";
     html{color-scheme:${style.theme === 'dark' ? 'dark' : 'light'};font-size:${style.fontSize}%}
     html,body{color:${c.fg} !important;background:${c.bg} !important}
     a,a:link{color:${c.link} !important}
@@ -32,7 +42,7 @@ function contentCSS() {
     pre{white-space:pre-wrap !important}${ff}`
 }
 
-let view, annoPage = db.emptyAnnoPage()
+let view, bookTitle = '', annoPage = db.emptyAnnoPage()
 
 // ---- navigation (three flow modes) ----
 function goNext() { if (style.flow === 'chapter') view.renderer?.nextSection?.(); else view.goRight() }
@@ -79,28 +89,33 @@ function applyStyle() {
 // ---- annotations (Web Annotation in IndexedDB) ----
 const annById = new Map(), annByValue = new Map(), annByIndex = new Map()
 function indexOfCFI(cfi) { try { return view.resolveNavigation(cfi)?.index ?? null } catch { return null } }
-function recOf(a) { return { id: a.id, cfi: cfiOf(a), text: textOf(a), note: noteOf(a), color: a.color || '#ffd54a', motivation: a.motivation || 'highlighting' } }
+function recOf(a) { return { id: a.id, cfi: cfiOf(a), text: textOf(a), note: noteOf(a), color: a.color || '#ffd54a', motivation: a.motivation || 'highlighting', style: styleOf(a) } }
 function register(rec) { annById.set(rec.id, rec); annByValue.set(rec.cfi, rec); const i = indexOfCFI(rec.cfi); if (i != null) { if (!annByIndex.has(i)) annByIndex.set(i, new Set()); annByIndex.get(i).add(rec) } return rec }
 function unregister(rec) { annById.delete(rec.id); annByValue.delete(rec.cfi); annByIndex.get(indexOfCFI(rec.cfi))?.delete(rec) }
 
 async function persistAnnotations() { await db.saveAnnotations(bookId, annoPage) }
 async function loadAnnotations() { annoPage = await db.getAnnotations(bookId); for (const a of (annoPage.items || [])) register(recOf(a)); renderAnnoPanel() }
 
-function drawRec(draw, rec) { const color = rec.color || '#ffd54a'; if (rec.motivation === 'bookmarking') draw(Overlayer.underline, { color, width: 3 }); else draw(Overlayer.highlight, { color }) }
+const STYLE_FN = { highlight: Overlayer.highlight, underline: Overlayer.underline, squiggly: Overlayer.squiggly }
+function drawRec(draw, rec) {
+  const color = rec.color || '#ffd54a'
+  if (rec.motivation === 'bookmarking') { draw(Overlayer.underline, { color, width: 3 }); return }
+  draw(STYLE_FN[rec.style] || Overlayer.highlight, { color })
+}
 function wireAnnotationEvents() {
   view.addEventListener('create-overlay', e => { const l = annByIndex.get(e.detail.index); if (l) for (const r of l) view.addAnnotation({ value: r.cfi }) })
   view.addEventListener('draw-annotation', e => { const r = annByValue.get(e.detail.annotation.value); if (r) drawRec(e.detail.draw, r) })
   view.addEventListener('show-annotation', e => { const r = annByValue.get(e.detail.value); if (r) showPopupForRec(r, e.detail.range) })
 }
-async function createAnnotation({ cfi, text, color, motivation = 'highlighting', note = '' }) {
-  const a = makeAnnotation(bookId, cfi, { motivation, text, color, note })
+async function createAnnotation({ cfi, text, color, motivation = 'highlighting', note = '', style = 'highlight' }) {
+  const a = makeAnnotation(bookId, cfi, { motivation, text, color, note, style })
   annoPage.items.push(a); await persistAnnotations()
   const rec = register(recOf(a)); view.addAnnotation({ value: rec.cfi }); renderAnnoPanel(); return rec
 }
 async function updateAnnotation(rec, patch) {
   Object.assign(rec, patch)
   const a = annoPage.items.find(x => x.id === rec.id)
-  if (a) { if ('color' in patch) a.color = patch.color; if ('note' in patch) { if (patch.note) a.body = { type: 'TextualBody', value: patch.note, format: 'text/plain', purpose: 'commenting' }; else delete a.body } a.modified = new Date().toISOString() }
+  if (a) { if ('color' in patch) a.color = patch.color; if ('style' in patch) a.style = patch.style; if ('note' in patch) { if (patch.note) a.body = { type: 'TextualBody', value: patch.note, format: 'text/plain', purpose: 'commenting' }; else delete a.body } a.modified = new Date().toISOString() }
   await persistAnnotations(); view.addAnnotation({ value: rec.cfi }); renderAnnoPanel()
 }
 async function deleteAnnotation(rec) {
@@ -109,7 +124,10 @@ async function deleteAnnotation(rec) {
 }
 
 // ---- selection popup ----
-const popup = $('#anno-popup'); let pending = null, popupRec = null, popupOpenedAt = 0
+const popup = $('#anno-popup'); let pending = null, popupRec = null, popupOpenedAt = 0, pendingStyle = 'highlight'
+const STYLE_ICON = { highlight: '▬', underline: 'U', squiggly: '∿' }
+const nextStyle = s => s === 'highlight' ? 'underline' : s === 'underline' ? 'squiggly' : 'highlight'
+function setStyleIcon(s) { const b = popup.querySelector('[data-act="style"]'); if (b) b.textContent = STYLE_ICON[s] || '▬' }
 function hidePopup() { popup.hidden = true; pending = null; popupRec = null }
 function positionPopup(x, y) { popup.hidden = false; popupOpenedAt = performance.now(); const w = popup.offsetWidth, h = popup.offsetHeight; popup.style.left = Math.max(8, Math.min(innerWidth - w - 8, x - w / 2)) + 'px'; popup.style.top = Math.max(52, y - h - 12) + 'px' }
 function onContentPointerup(doc, index, ev) {
@@ -117,18 +135,26 @@ function onContentPointerup(doc, index, ev) {
   const range = sel.getRangeAt(0), text = sel.toString().trim(); if (!text) return
   let cfi; try { cfi = view.getCFI(index, range) } catch { return }
   pending = { cfi, text }; popupRec = null; popup.querySelector('[data-act="delete"]').hidden = true
+  setStyleIcon(pendingStyle)
   const host = $('#reader-view').getBoundingClientRect(); positionPopup(host.left + (ev.clientX || host.width / 2), host.top + (ev.clientY || 100))
 }
 function showPopupForRec(rec, range) {
   pending = null; popupRec = rec; popup.querySelector('[data-act="delete"]').hidden = false
+  setStyleIcon(rec.style || 'highlight')
   let x = innerWidth / 2, y = 160; try { const r = range.getBoundingClientRect?.(); if (r) { const host = $('#reader-view').getBoundingClientRect(); x = host.left + r.left + r.width / 2; y = host.top + r.top } } catch {}
   positionPopup(x, y)
 }
 popup.querySelectorAll('.dot').forEach(d => d.addEventListener('click', async () => {
   const color = d.dataset.color
-  if (pending) { await createAnnotation({ ...pending, color }); view.deselect() } else if (popupRec) await updateAnnotation(popupRec, { color })
+  if (pending) { await createAnnotation({ ...pending, color, style: pendingStyle }); view.deselect() } else if (popupRec) await updateAnnotation(popupRec, { color })
   hidePopup()
 }))
+popup.querySelector('[data-act="style"]').addEventListener('click', async () => {
+  if (popupRec) { const st = nextStyle(popupRec.style || 'highlight'); await updateAnnotation(popupRec, { style: st }); setStyleIcon(st) }
+  else { pendingStyle = nextStyle(pendingStyle); setStyleIcon(pendingStyle) }
+})
+popup.querySelector('[data-act="wiki"]').addEventListener('click', () => { lookupWikipedia(pending?.text || popupRec?.text); hidePopup() })
+popup.querySelector('[data-act="share"]').addEventListener('click', () => { shareQuote(pending?.text || popupRec?.text); hidePopup() })
 popup.querySelector('[data-act="note"]').addEventListener('click', async () => {
   const note = prompt('Notiz:', popupRec?.note || ''); if (note === null) return
   if (pending) { await createAnnotation({ ...pending, color: '#ffd54a', motivation: 'commenting', note }); view.deselect() } else if (popupRec) await updateAnnotation(popupRec, { note })
@@ -213,10 +239,52 @@ $('#btn-bookmark').addEventListener('click', async () => { const cfi = view.last
 $('#btn-prev').addEventListener('click', goPrev)
 $('#btn-next').addEventListener('click', goNext)
 $('#progress-slider').addEventListener('input', e => view.goToFraction(parseFloat(e.target.value)))
-document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'f' || e.key === 'F') toggleFullscreen(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup(); toggleImmersive(false) } })
+document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; if (e.key === 'ArrowLeft') goPrev(); else if (e.key === 'ArrowRight') goNext(); else if (e.key === 'f' || e.key === 'F') toggleFullscreen(); else if (e.key === 'Escape') { closeSide(); $('#appearance-panel').hidden = true; hidePopup(); $('#lookup-panel').hidden = true; $('#footnote-panel').hidden = true; toggleImmersive(false) } })
 
 let flashTimer
 function flash(msg) { let el = $('#flash'); if (!el) { el = document.createElement('div'); el.id = 'flash'; el.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--r-bar);border:1px solid var(--r-border);padding:.4rem .9rem;border-radius:6px;z-index:20;font-size:.8rem'; document.body.append(el) } el.textContent = msg; el.style.opacity = '1'; clearTimeout(flashTimer); flashTimer = setTimeout(() => el.style.opacity = '0', 1500) }
+
+// ---- Wikipedia lookup + share ----
+const lookupPanel = $('#lookup-panel')
+$('#lookup-close').addEventListener('click', () => { lookupPanel.hidden = true })
+async function lookupWikipedia(term) {
+  term = (term || '').trim(); if (!term) return
+  const lang = (fmtLangMap(view.book?.metadata?.language) || 'de').slice(0, 2).toLowerCase() || 'de'
+  const q = term.split(/\s+/).slice(0, 6).join(' ')
+  const body = $('#lookup-body')
+  body.innerHTML = '<p class="lookup-muted">Suche…</p>'; lookupPanel.hidden = false
+  try {
+    const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}?redirect=true`)
+    if (!r.ok) throw 0
+    const d = await r.json()
+    if (!d.extract || d.type === 'disambiguation') throw 0
+    const thumb = d.thumbnail?.source ? `<img class="thumb" src="${escapeHtml(d.thumbnail.source)}" alt="">` : ''
+    const page = escapeHtml(d.content_urls?.desktop?.page || `https://${lang}.wikipedia.org`)
+    body.innerHTML = `<div class="lookup-title">${escapeHtml(d.title)}</div>`
+      + `<div class="lookup-extract">${thumb}${escapeHtml(d.extract)}</div>`
+      + `<a class="lookup-more" href="${page}" target="_blank" rel="noopener">Auf Wikipedia öffnen →</a>`
+  } catch {
+    const s = escapeHtml(`https://${lang}.wikipedia.org/w/index.php?search=${encodeURIComponent(q)}`)
+    body.innerHTML = `<p class="lookup-muted">Kein direkter Artikel zu „${escapeHtml(q)}".</p>`
+      + `<a class="lookup-more" href="${s}" target="_blank" rel="noopener">Auf Wikipedia suchen →</a>`
+  }
+}
+async function shareQuote(text) {
+  text = (text || '').trim(); if (!text) return
+  const msg = `„${text}"` + (bookTitle ? `\n— ${bookTitle}` : '')
+  if (navigator.share) { try { await navigator.share({ text: msg }) } catch (e) {} }
+  else { try { await navigator.clipboard.writeText(msg); flash('Zitat kopiert') } catch (e) {} }
+}
+
+// ---- footnote popovers ----
+const footnotes = new FootnoteHandler()
+footnotes.addEventListener('before-render', e => { try { e.detail.view.renderer?.setStyles?.(contentCSS()) } catch (x) {} })
+footnotes.addEventListener('render', e => {
+  const body = $('#footnote-body'); body.innerHTML = ''
+  body.append(e.detail.view)
+  $('#footnote-panel').hidden = false
+})
+$('#footnote-close').addEventListener('click', () => { $('#footnote-panel').hidden = true; $('#footnote-body').innerHTML = '' })
 
 // ---- position persistence (IndexedDB) ----
 let saveTimer
@@ -234,10 +302,12 @@ async function boot() {
   const blob = await db.getFileBlob(bookId)
   if (!blob) { $('#reader-title').textContent = 'Buch nicht gefunden'; return }
   const b = await db.getBook(bookId)
-  if (b) { $('#reader-title').textContent = b.title; document.title = b.title + ' — lieslese' }
+  if (b) { bookTitle = b.title; $('#reader-title').textContent = b.title; document.title = b.title + ' — lieslese' }
 
   view = document.createElement('foliate-view'); $('#reader-view').append(view)
-  await view.open(new File([blob], (b?.fileName || 'book.epub'), { type: 'application/epub+zip' }))
+  // preserve the original File (name + type) so EPUB vs PDF is detected correctly
+  const file = (blob instanceof File) ? blob : new File([blob], (b?.fileName || 'book'), { type: blob.type || '' })
+  await view.open(file)
   view.renderer.addEventListener('scroll', markScroll)
   $('#reader-view').addEventListener('wheel', onContentWheel, { passive: true })
 
@@ -261,6 +331,7 @@ async function boot() {
   })
   view.addEventListener('relocate', e => { const d = e.detail; $('#progress-slider').value = d.fraction || 0; $('#progress-label').textContent = Math.round((d.fraction || 0) * 100) + ' %'; scheduleSave(d) })
   wireAnnotationEvents()
+  view.addEventListener('link', e => { footnotes.handle(view.book, e).catch(() => {}) })
   applyStyle()
 
   const loc = await db.getLocator(bookId)

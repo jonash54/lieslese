@@ -62,7 +62,7 @@ export async function extractMeta(file) {
 export function nowISO() { return new Date().toISOString().replace(/\.\d+Z$/, 'Z') }
 export function uuid() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2)) }
 
-export function makeAnnotation(source, cfi, { motivation = 'highlighting', text = '', note = '', color = '#ffd54a' } = {}) {
+export function makeAnnotation(source, cfi, { motivation = 'highlighting', text = '', note = '', color = '#ffd54a', style = 'highlight' } = {}) {
   const now = nowISO()
   const ann = {
     type: 'Annotation', id: 'urn:uuid:' + uuid(), motivation, created: now, modified: now,
@@ -70,9 +70,10 @@ export function makeAnnotation(source, cfi, { motivation = 'highlighting', text 
   }
   if (text) ann.target.selector.push({ type: 'TextQuoteSelector', exact: text })
   if (note) ann.body = { type: 'TextualBody', value: note, format: 'text/plain', purpose: 'commenting' }
-  if (motivation !== 'bookmarking') ann.color = color
+  if (motivation !== 'bookmarking') { ann.color = color; ann.style = style }
   return ann
 }
+export function styleOf(a) { return a.style || 'highlight' }
 export function cfiOf(a) { return (a.target?.selector || []).find(s => s.type === 'FragmentSelector')?.value || '' }
 export function textOf(a) { return (a.target?.selector || []).find(s => s.type === 'TextQuoteSelector')?.exact || '' }
 export function noteOf(a) {

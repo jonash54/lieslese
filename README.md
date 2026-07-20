@@ -1,7 +1,7 @@
 # lieslese
 
-A private EPUB reader that runs **entirely in your browser**. Open your own
-books — they never leave your device. No account, no upload, no server-side
+A private **EPUB &amp; PDF** reader that runs **entirely in your browser**. Open your
+own books — they never leave your device. No account, no upload, no server-side
 storage, no tracking.
 
 [Live instance → lieslese.de](https://lieslese.de) ·
@@ -25,14 +25,19 @@ JSON. Nothing is locked in.
 
 ## Features
 
-- Open EPUBs by file picker or drag & drop; library grid with covers
+- Open **EPUB and PDF** by file picker or drag & drop; library grid with covers
 - In-browser reader (foliate-js): three flow modes — paginated, continuous
   scroll, and scroll-per-chapter — plus table of contents and in-book search
-- Highlights, notes, bookmarks; per-book notebook with Markdown/HTML export
-- Reading settings: light / sepia / dark, font, size, line height, margins
+- Highlights (highlight / underline / squiggly, 5 colours), notes, bookmarks;
+  per-book notebook with Markdown/HTML export
+- **Wikipedia lookup** and **share a quote** from any text selection
+- **Footnote popovers** (read footnotes without losing your place)
+- Reading settings: light / sepia / dark, font (incl. **OpenDyslexic**), size,
+  line height, margins; fullscreen
 - Metadata editor with optional autofill (Google Books, client-side)
 - Accent themes (weltsein green / blue / your own CSS)
-- Installable **PWA**, works fully **offline**
+- Installable **PWA**, works fully **offline**; **open .epub/.pdf from your OS**
+  (file handlers)
 
 ## Run it
 

@@ -92,9 +92,24 @@ foliate-view { width: 100%; height: 100%; display: block; }
 
 /* selection annotation popup */
 .anno-popup { position: fixed; z-index: 10; display: flex; gap: 0.3rem; align-items: center;
+  flex-wrap: wrap; max-width: 92vw; justify-content: center;
   background: var(--r-bar); border: 1px solid var(--r-border); border-radius: 8px;
   padding: 0.3rem 0.4rem; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
 .anno-popup[hidden] { display: none; }
+
+/* Wikipedia lookup bottom sheet */
+.lookup-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; max-height: 55vh;
+  overflow-y: auto; background: var(--r-bar); border-top: 1px solid var(--r-border);
+  padding: 1rem 1.2rem 1.4rem; box-shadow: 0 -8px 30px rgba(0,0,0,0.2); }
+.lookup-panel[hidden] { display: none; }
+.lookup-close { position: absolute; top: 0.5rem; right: 0.6rem; }
+.lookup-title { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; margin: 0 2rem 0.4rem 0; }
+.lookup-extract { font-size: 0.92rem; line-height: 1.55; }
+.lookup-extract img.thumb { float: right; max-width: 110px; margin: 0 0 0.5rem 0.8rem; border-radius: 4px; }
+.lookup-more { display: inline-block; margin-top: 0.7rem; font-size: 0.82rem; color: var(--r-accent); }
+.lookup-muted { color: var(--r-muted); font-size: 0.88rem; }
+.footnote-body { height: 32vh; }
+.footnote-body foliate-view { width: 100%; height: 100%; display: block; }
 .color-dots { display: flex; gap: 0.25rem; }
 .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent;
   background: var(--c); cursor: pointer; }

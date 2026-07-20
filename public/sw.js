@@ -1,6 +1,6 @@
 /* lieslese service worker — fully static app, works offline after first visit.
    Books live in IndexedDB (not the cache), so opened books read offline anyway. */
-const CACHE = 'lieslese-v1';
+const CACHE = 'lieslese-v2';
 const SHELL = [
   '/', '/index.html', '/reader.html',
   '/css/weltsein.css', '/css/app.css', '/css/reader.css',

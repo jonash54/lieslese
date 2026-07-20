@@ -10,8 +10,8 @@ applyTheme(); wireThemeToggle()
 
 // ---------- adding books ----------
 async function addFiles(fileList) {
-  const files = [...fileList].filter(f => /\.epub$/i.test(f.name) || f.type === 'application/epub+zip')
-  if (!files.length) { toast('Bitte EPUB-Dateien wählen.'); return }
+  const files = [...fileList].filter(f => /\.(epub|pdf)$/i.test(f.name) || f.type === 'application/epub+zip' || f.type === 'application/pdf')
+  if (!files.length) { toast('Bitte EPUB- oder PDF-Dateien wählen.'); return }
   for (const f of files) {
     try {
       toast(`Lese „${f.name}"…`)
@@ -246,6 +246,21 @@ function toast(msg) {
   if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.append(el) }
   el.textContent = msg; el.classList.toggle('show', !!msg)
   clearTimeout(toastTimer); if (msg) toastTimer = setTimeout(() => el.classList.remove('show'), 2500)
+}
+
+// PWA file handler: open .epub/.pdf launched from the OS (installed app, Chromium)
+if ('launchQueue' in window) {
+  window.launchQueue.setConsumer(async params => {
+    if (!params.files || !params.files.length) return
+    const files = []
+    for (const h of params.files) { try { files.push(await h.getFile()) } catch (e) {} }
+    if (!files.length) return
+    await addFiles(files)
+    if (files.length === 1) {
+      const id = await db.hashFile(files[0])
+      if (await db.getBook(id)) location.href = `/reader.html?id=${id}`
+    }
+  })
 }
 
 render()

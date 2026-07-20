@@ -76,7 +76,7 @@
     <div class="pop-row"><span>Zeilenabstand</span><input type="range" id="spacing-range" min="1.1" max="2.2" step="0.05" value="1.5"></div>
     <div class="pop-row"><span>Rand</span><input type="range" id="margin-range" min="0" max="12" step="1" value="6"></div>
     <div class="pop-row"><span>Schriftart</span>
-      <select id="font-family"><option value="">Original</option><option value="Inter, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="'JetBrains Mono', monospace">JetBrains Mono</option></select></div>
+      <select id="font-family"><option value="">Original</option><option value="Inter, sans-serif">Inter</option><option value="Georgia, serif">Georgia</option><option value="'OpenDyslexic', sans-serif">OpenDyslexic</option><option value="'JetBrains Mono', monospace">JetBrains Mono</option></select></div>
     <div class="pop-row"><label><input type="checkbox" id="chk-justify" checked> Blocksatz</label></div>
     <div class="pop-row"><label><input type="checkbox" id="chk-hyphenate" checked> Silbentrennung</label></div>
     <div class="pop-row"><label><input type="checkbox" id="chk-bottombar" checked> Fortschrittsleiste unten</label></div>
@@ -90,9 +90,24 @@
       <button class="dot" style="--c:#f48fb1" data-color="#f48fb1"></button>
       <button class="dot" style="--c:#ce93d8" data-color="#ce93d8"></button>
     </div>
+    <button class="icon-btn" data-act="style" title="Stil (Highlight / Unterstrich / Wellenlinie)">▬</button>
     <button class="icon-btn" data-act="note" title="Notiz">✎</button>
+    <button class="icon-btn" data-act="wiki" title="Wikipedia">W</button>
+    <button class="icon-btn" data-act="share" title="Teilen">↗</button>
     <button class="icon-btn" data-act="copy" title="Kopieren">⧉</button>
     <button class="icon-btn" data-act="delete" title="Löschen" hidden>🗑</button>
+  </div>
+
+  <!-- Wikipedia lookup sheet -->
+  <div id="lookup-panel" class="lookup-panel" hidden>
+    <button class="icon-btn lookup-close" id="lookup-close" title="Schließen">✕</button>
+    <div id="lookup-body"></div>
+  </div>
+
+  <!-- footnote popover sheet -->
+  <div id="footnote-panel" class="lookup-panel" hidden>
+    <button class="icon-btn lookup-close" id="footnote-close" title="Schließen">✕</button>
+    <div id="footnote-body" class="footnote-body"></div>
   </div>
 
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
